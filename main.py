@@ -1,4 +1,5 @@
 import sqlite3
+import datetime
 
 # Define DBOperation class to manage all data into the database.
 # Give a name of your choice to the database
@@ -11,7 +12,7 @@ class DBOperations:
   sql_create_schedule_table = '''CREATE TABLE IF NOT EXISTS Schedule(FlightID INTEGER PRIMARY KEY AUTOINCREMENT, PlannedArrivalDateTime DATETIME, PlannedDepartureDateTime DATETIME, ActualArrivalDateTime DATETIME, ActualDepartureDateTime DATETIME, PlaneID INTEGER NOT NULL, ToAirportID INTEGER NOT NULL, FromAirportID INTEGER NOT NULL, FirstOfficer INTEGER NOT NULL, Captain INTEGER NOT NULL, Status TEXT NOT NULL CHECK (Status IN ('Planned', 'Delayed', 'Boarding', 'Departed', 'Landed')), FOREIGN KEY (PlaneID) REFERENCES Plane(PlaneID), FOREIGN KEY (ToAirportID) REFERENCES Airport(AirportID), FOREIGN KEY (FromAirportID) REFERENCES Airport(AirportID), FOREIGN KEY (FirstOfficer) REFERENCES Pilot(PilotID), FOREIGN KEY (Captain) REFERENCES Pilot(PilotID))'''
   sql_create_airport_table = '''CREATE TABLE IF NOT EXISTS Airport(AirportID INTEGER PRIMARY KEY AUTOINCREMENT, AirportName VARCHAR(200) NOT NULL, CountryCode VARCHAR(3) NOT NULL, FOREIGN KEY (CountryCode) REFERENCES Country(CountryCode))'''
   sql_create_country_table = '''CREATE TABLE IF NOT EXISTS Country(CountryCode CHAR(3) NOT NULL, CountryName VARCHAR(200) NOT NULL, Continent VARCHAR (200) NOT NULL, PRIMARY KEY (CountryCode))'''
-  sql_create_table = ""
+  sql_create_journeytime_table = '''CREATE TABLE IF NOT EXISTS JourneyTime(OriginID INTEGER, DestinationID INTEGER, TotalTravelTimeMins INTEGER NOT NULL, PRIMARY KEY (OriginID, DestinationID), FOREIGN KEY (DestinationID) REFERENCES Airport(AirportID), FOREIGN KEY (OriginID) REFERENCES Airport(AirportID))'''
   sql_insert = ""
   sql_select_all = "select * from TableName"
   sql_search = "select * from TableName where FlightID = ?"
@@ -19,6 +20,9 @@ class DBOperations:
   sql_update_data = ""
   sql_delete_data = ""
   sql_drop_table = ""
+
+
+
 
   def __init__(self):
     try:
@@ -30,6 +34,7 @@ class DBOperations:
       self.cur.execute(self.sql_create_schedule_table)
       self.cur.execute(self.sql_create_airport_table)
       self.cur.execute(self.sql_create_country_table)
+      self.cur.execute(self.sql_create_journeytime_table)
       self.cur.execute("SELECT COUNT(*) FROM Country")
       count = self.cur.fetchone()[0]
       if count == 0:
@@ -54,26 +59,152 @@ class DBOperations:
       count = self.cur.fetchone()[0]
       if count == 0:
         self.cur.executescript("INSERT INTO Schedule VALUES(1,'2026-11-01 08:00','2026-11-01 06:00',NULL,NULL,1,2,1,2,1,'Planned');INSERT INTO Schedule VALUES(2,'2026-11-01 10:30','2026-11-01 08:00',NULL,NULL,2,3,2,4,3,'Planned');INSERT INTO Schedule VALUES(3,'2026-11-02 14:00','2026-11-02 11:00',NULL,NULL,3,4,3,6,5,'Boarding');INSERT INTO Schedule VALUES(4,'2026-11-02 18:00','2026-11-02 15:00',NULL,NULL,4,5,4,8,7,'Delayed');INSERT INTO Schedule VALUES(5,'2026-11-03 12:00','2026-11-03 09:00',NULL,NULL,5,6,5,10,9,'Planned');INSERT INTO Schedule VALUES(6,'2026-11-03 15:30','2026-11-03 12:00',NULL,NULL,6,7,6,12,11,'Departed');INSERT INTO Schedule VALUES(7,'2026-11-04 21:00','2026-11-04 18:00',NULL,NULL,7,8,7,14,13,'Planned');INSERT INTO Schedule VALUES(8,'2026-11-05 07:30','2026-11-05 05:00',NULL,NULL,8,9,8,1,15,'Landed');INSERT INTO Schedule VALUES(9,'2026-11-05 13:00','2026-11-05 10:30',NULL,NULL,9,10,9,3,2,'Planned');INSERT INTO Schedule VALUES(10,'2026-11-06 17:45','2026-11-06 14:15',NULL,NULL,10,11,10,5,4,'Departed');INSERT INTO Schedule VALUES(11,'2026-11-07 09:15','2026-11-07 06:45',NULL,NULL,11,12,11,7,6,'Boarding');INSERT INTO Schedule VALUES(12,'2026-11-07 20:00','2026-11-07 17:00',NULL,NULL,12,13,12,9,8,'Delayed');INSERT INTO Schedule VALUES(13,'2026-11-08 12:30','2026-11-08 09:30',NULL,NULL,13,14,13,11,10,'Planned');INSERT INTO Schedule VALUES(14,'2026-11-08 18:15','2026-11-08 15:15',NULL,NULL,14,15,14,13,12,'Departed');INSERT INTO Schedule VALUES(15,'2026-11-09 22:00','2026-11-09 18:30',NULL,NULL,15,1,15,15,14,'Planned');")
+      self.cur.execute("SELECT COUNT(*) FROM JourneyTime")
+      count = self.cur.fetchone()[0]
+      if count == 0:
+        routes = ""
+        for originid in range(1, 16):
+          for destinationid in range(1, 16):
+            if originid != destinationid:
+              if originid in [1, 2] and destinationid in [1, 2]:
+                mins = 60
+              elif originid <= 6 and destinationid <= 6:
+                mins = 120
+              elif destinationid in [7, 8, 9]:
+                mins = 480
+              elif destinationid in [10, 11]:
+                mins = 720
+              elif destinationid in [12, 13]:
+                mins = 1320
+              elif destinationid in [14, 15]:
+                mins = 600
+              else:
+                mins = 180
+              routes += f"INSERT INTO JourneyTime VALUES({originid},{destinationid},{mins});"
+        self.cur.executescript(routes)
       self.conn.commit()
     except Exception as e:
       print(e)
     finally:
       self.conn.close()
+
+
+
 
   def get_connection(self):
     self.conn = sqlite3.connect("FlightManagement.db")
     self.cur = self.conn.cursor()
 
-  def create_table(self):
-    try:
-      self.get_connection()
-      self.cur.execute(self.create_table)
-      self.conn.commit()
-      print("Table created successfully")
-    except Exception as e:
-      print(e)
-    finally:
-      self.conn.close()
+
+
+
+  def addNewFlight(self):
+    newFlight = Schedule()
+    origincountry = ""
+    destinationcountry = ""
+# Wizard starting with origin country
+    while True:
+      self.cur.execute("SELECT CountryCode, Name FROM Country")
+      countries = self.cur.fetchall()
+      for i, country in enumerate(countries, start = 1):
+        print(f"{i}. {country[1]}" )
+      print("\nEnter B to return to the main menu. \n")
+      choice = input("Enter the country the flight is flying from: ")
+      if choice.upper() == "B":
+        return
+      try:
+        choice = int(choice)
+        if 1<= choice <= len(countries):
+          origincountry = countries[choice - 1][0]
+          break
+        print("please choose a valid option.")
+      except ValueError:
+        print("Please enter a number.")
+
+# Wizard Assigning Origin Airport
+    while True:
+      self.cur.execute("SELECT AirportID, AirportName, CountryCode, Name FROM Airport WHERE CountryCode = ?",(origincountry))
+      airport = self.cur.fetchall()
+      for i, airport in enumerate(airport, start = 1):
+        print(f"{i}. {airport[1]}" )
+      print("Enter B to return to the main menu. \n")
+      choice = input("Enter the airport the flight is flying to: ")
+      if choice.upper() == "B":
+        return
+      try:
+        choice = int(choice)
+        if 1<= choice <= len(countries):
+          airportid = airport[choice - 1][0]
+          newFlight.set_Flight_origin(newFlight,airportid[choice-1][0])
+          break
+        print("please choose a valid option.")
+      except ValueError:
+        print("Please enter a number.")
+  
+    while True:
+# Wizard Destination country
+      self.cur.execute("SELECT CountryCode, Name FROM Country")
+      countries = self.cur.fetchall()
+      for i, country in enumerate(countries, start = 1):
+        print(f"{i}. {country[1]}" )
+      print("\nEnter B to return to the main menu. \n")
+      choice = input("Enter the country the flight is flying to: ")
+      if choice.upper() == "B":
+        return
+      try:
+        choice = int(choice)
+        if 1<= choice <= len(countries):
+          destinationcountry = countries[choice - 1][0]
+          break
+        print("please choose a valid option.")
+      except ValueError:
+        print("Please enter a number.")
+
+# Wizard Assigning Destination Airport not including the orgin airport
+    while True:
+      self.cur.execute("SELECT AirportID, AirportName, CountryCode, Name FROM Airport WHERE CountryCode = ? AND AirportID != ?",(destinationcountry), (airportid))
+      airport = self.cur.fetchall()
+      for i, airport in enumerate(airport, start = 1):
+        print(f"{i}. {airport[1]}" )
+      print("Enter B to return to the main menu. \n")
+      choice = input("Enter the airport the flight is flying to: ")
+      if choice.upper() == "B":
+        return
+      try:
+        choice = int(choice)
+        if 1<= choice <= len(countries):
+          airportid = airport[choice - 1][0]
+          newFlight.set_flight_destination(newFlight,airportid[choice-1][0])
+          break
+        print("please choose a valid option.")
+      except ValueError:
+        print("Please enter a number.")
+
+# Wizard Selecting Departure Date Time
+    while True:
+      print("Enter B to return to the main menu. \n")
+      try:
+        flight_date = input("Enter flight date (dd/MM/YYYY HH:MM): ")
+        date_object = datetime.strptime(flight_date, "%d/%m/%Y %H:%M")
+        break
+      except ValueError:
+        print("Please enter a valid date and time.")
+
+
+# Wizard Selecting Plane - Should a plane only be selected if its in the right location for that trip
+    while True:
+      print("Enter B to return to the main menu. \n")
+      try:
+        self.cur.execute("SELECT PlaneID, TypeName, MaxPassengers, Name FROM Plane, PlanType WHERE PlannedDepartureDate <= ? AND  AND AirportID != ?",(destinationcountry), (airportid))
+        airport = self.cur.fetchall()
+        for i, airport in enumerate(airport, start = 1):
+          print(f"{i}. {airport[1]}" )
+        flight_date = input("Enter flight date (dd/MM/YYYY HH:MM): ")
+        date_object = datetime.strptime(flight_date, "%d/%m/%Y %H:%M")
+        break
+      except ValueError:
+        print("Please enter a valid date and time.")
+
 
   def insert_data(self):
     try:
@@ -182,10 +313,18 @@ class Schedule:
     self.flightID = flightID
 
   def set_flight_origin(self, flightOrigin):
-    self.flight_origin = flightOrigin
+    self.flightorigin = flightOrigin
 
   def set_flight_destination(self, flightDestination):
-    self.flight_destination = flightDestination
+      self.flightdestination = flightDestination
+
+      
+  def set_departureDateTime(self, departureDateTime):
+      self.planneddeparture = departureDateTime
+      self.cur.execute('''SELECT TotalTravelTimeMins FROM JourneyTime WHERE OriginID = ? AND DestinationID = ?''',(self.flightorigin,self.flightdestination))
+      traveltime = self.cur.fetchone()[0]
+      self.plannedarrival = self.planneddeparture + datetime.timedelta(minutes = traveltime)
+
 
   def set_status(self, status):
     self.status = status
@@ -230,7 +369,7 @@ while True:
 
   __choose_menu = int(input("Enter your choice: "))
   if __choose_menu == 1:
-    db_ops.create_table()
+    db_ops.addNewFlight()
   elif __choose_menu == 2:
     db_ops.insert_data()
   elif __choose_menu == 3:
