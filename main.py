@@ -5,10 +5,13 @@ import sqlite3
 
 
 class DBOperations:
-  sql_create_table_firsttime = "create table if not exists "
-
-  sql_create_table = "create table TableName"
-
+  sql_create_pilot_table = "'''CREATE TABLE Pilot(PilotID INTEGER NOT NULL AUTO_INCREMENT, Name VARCHAR(40) NOT NULL, DoB DATE NOT NULL, ContactNumber INTEGER NOT NULL, PRIMARY KEY (PilotID));'''"
+  sql_create_plane_table = "'''CREATE TABLE Plane(PlaneID INTEGER NOT NULL AUTOINCREMENT, TypeID INTEGER NOT NULL, PRIMARY KEY (PlaneID), FOREIGN KEY (TypeID) REFERENCES PlaneType(TypeID));'''"
+  sql_create_planetype_table = "'''CREATE TABLE PlaneType(TypeID INTEGER NOT NULL AUTOINCREMENT, TypeName VARCHAR(200) NOT NULL, MaxPassengers INTEGER NOT NULL, PRIMARY KEY (TypeID));'''"
+  sql_create_schedule_table = "'''CREATE TABLE Schedule(FlightID INTEGER NOT NULL AUTOINCREMENT, PlannedArrivalDateTime DATETIME, PlannedDepartureDateTime DATETIME, ActualArrivalDateTime DATETIME, ActualDepartureDateTime DATETIME, PlaneID INTEGER NOT NULL, ToAirportID INTEGER NOT NULL, FromAirportID INTEGER NOT NULL, FirstOfficer INTEGER NOT NULL, Captain INTEGER NOT NULL, Status ENUM('Planned', ‘Delayed’, 'Boarding', 'Departed’, ‘Landed’) NOT NULL, PRIMARY KEY (FlightID), FOREIGN KEY (PlaneID) REFERENCES Plane(PlaneID), FOREIGN KEY (ToAirportID) REFERENCES Airport(AirportID), FOREIGN KEY (FromAirportID) REFERENCES Airport(AirportID), FOREIGN KEY (FirstOfficer) REFERENCES Pilot(PilotID), FOREIGN KEY (Captain) REFERENCES Pilot(PilotID));'''"
+  sql_create_airport_table = "'''CREATE TABLE Airport(AirportID INTEGER NOT NULL AUTOINCREMENT, AirportName VARCHAR(200) NOT NULL, CountryCode VARCHAR(3) NOT NULL, PRIMARY KEY (AirportID), FOREIGN KEY (CountryCode) REFERENCES Country(CountryCode));'''"
+  sql_create_country_table = "'''CREATE TABLE Pilot(PilotID INTEGER NOT NULL AUTO_INCREMENT, Name VARCHAR(40) NOT NULL, DoB DATE NOT NULL, ContactNumber INTEGER NOT NULL, PRIMARY KEY (PilotID));'''"
+  sql_create_table = "'''CREATE TABLE Country(CountryCode CHAR(3) NOT NULL, CountryName VARCHAR(200) NOT NULL, Continent VARCHAR (200) NOT NULL, PRIMARY KEY (CountryCode));'''"
   sql_insert = ""
   sql_select_all = "select * from TableName"
   sql_search = "select * from TableName where FlightID = ?"
@@ -19,9 +22,14 @@ class DBOperations:
 
   def __init__(self):
     try:
-      self.conn = sqlite3.connect("DBName.db")
+      self.conn = sqlite3.connect("FlightManagement.db")
       self.cur = self.conn.cursor()
-      self.cur.execute(self.sql_create_table_firsttime)
+      self.cur.execute(self.sql_create_pilot_table)
+      self.cur.execute(self.sql_create_plane_table)
+      self.cur.execute(self.sql_create_planetype_table)
+      self.cur.execute(self.sql_create_schedule_table)
+      self.cur.execute(self.sql_create_airport_table)
+      self.cur.execute(self.sql_create_country_table)
       self.conn.commit()
     except Exception as e:
       print(e)
@@ -29,13 +37,13 @@ class DBOperations:
       self.conn.close()
 
   def get_connection(self):
-    self.conn = sqlite3.connect("DBName.db")
+    self.conn = sqlite3.connect("FlightManagement.db")
     self.cur = self.conn.cursor()
 
   def create_table(self):
     try:
       self.get_connection()
-      self.cur.execute(self.sql_create_table)
+      self.cur.execute('''CREATE TABLE Pilot(PilotID INTEGER PRIMARY KEY AUTOINCREMENT,Name VARCHAR(40) NOT NULL,DoB DATE NOT NULL,ContactNumber INTEGER NOT NULL);''')
       self.conn.commit()
       print("Table created successfully")
     except Exception as e:
