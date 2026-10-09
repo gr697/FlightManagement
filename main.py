@@ -7,7 +7,7 @@ import datetime
 
 class DBOperations:
   sql_create_pilot_table = '''CREATE TABLE IF NOT EXISTS Pilot(PilotID INTEGER PRIMARY KEY AUTOINCREMENT, Name VARCHAR(40) NOT NULL, DoB DATE NOT NULL, ContactNumber INTEGER NOT NULL)'''
-  sql_create_plane_table = '''CREATE TABLE IF NOT EXISTS Plane(PlaneID INTEGER PRIMARY KEY AUTOINCREMENT, TypeID INTEGER NOT NULL, FOREIGN KEY (TypeID) REFERENCES PlaneType(TypeID))'''
+  sql_create_plane_table = '''CREATE TABLE IF NOT EXISTS Plane(PlaneID INTEGER PRIMARY KEY AUTOINCREMENT, Location INTEGER NOT NULL, TypeID INTEGER NOT NULL, FOREIGN KEY (TypeID) REFERENCES PlaneType(TypeID), FOREIGN KEY (Location) REFERENCES Airport(AirportID))'''
   sql_create_planetype_table = '''CREATE TABLE IF NOT EXISTS PlaneType(TypeID INTEGER PRIMARY KEY AUTOINCREMENT, TypeName VARCHAR(200) NOT NULL, MaxPassengers INTEGER NOT NULL)'''
   sql_create_schedule_table = '''CREATE TABLE IF NOT EXISTS Schedule(FlightID INTEGER PRIMARY KEY AUTOINCREMENT, PlannedArrivalDateTime DATETIME, PlannedDepartureDateTime DATETIME, ActualArrivalDateTime DATETIME, ActualDepartureDateTime DATETIME, PlaneID INTEGER NOT NULL, ToAirportID INTEGER NOT NULL, FromAirportID INTEGER NOT NULL, FirstOfficer INTEGER NOT NULL, Captain INTEGER NOT NULL, Status TEXT NOT NULL CHECK (Status IN ('Planned', 'Delayed', 'Boarding', 'Departed', 'Landed')), FOREIGN KEY (PlaneID) REFERENCES Plane(PlaneID), FOREIGN KEY (ToAirportID) REFERENCES Airport(AirportID), FOREIGN KEY (FromAirportID) REFERENCES Airport(AirportID), FOREIGN KEY (FirstOfficer) REFERENCES Pilot(PilotID), FOREIGN KEY (Captain) REFERENCES Pilot(PilotID))'''
   sql_create_airport_table = '''CREATE TABLE IF NOT EXISTS Airport(AirportID INTEGER PRIMARY KEY AUTOINCREMENT, AirportName VARCHAR(200) NOT NULL, CountryCode VARCHAR(3) NOT NULL, FOREIGN KEY (CountryCode) REFERENCES Country(CountryCode))'''
@@ -46,8 +46,7 @@ class DBOperations:
       self.cur.execute("SELECT COUNT(*) FROM Plane")
       count = self.cur.fetchone()[0]
       if count == 0:
-        self.cur.executescript("INSERT INTO Plane VALUES(1,1);INSERT INTO Plane VALUES(2,2);INSERT INTO Plane VALUES(3,3);INSERT INTO Plane VALUES(4,4);INSERT INTO Plane VALUES(5,5);INSERT INTO Plane VALUES(6,6);INSERT INTO Plane VALUES(7,7);INSERT INTO Plane VALUES(8,8);INSERT INTO Plane VALUES(9,9);INSERT INTO Plane VALUES(10,10);INSERT INTO Plane VALUES(11,11);INSERT INTO Plane VALUES(12,12);INSERT INTO Plane VALUES(13,13);INSERT INTO Plane VALUES(14,14);INSERT INTO Plane VALUES(15,15);")
-      self.cur.execute("SELECT COUNT(*) FROM PlaneType")
+        self.cur.executescript("INSERT INTO Plane (Location,TypeID) VALUES(1,1);INSERT INTO Plane (Location,TypeID) VALUES(2,2);INSERT INTO Plane (Location,TypeID) VALUES(3,3);INSERT INTO Plane (Location,TypeID) VALUES(4,4);INSERT INTO Plane (Location,TypeID) VALUES(5,5);INSERT INTO Plane (Location,TypeID) VALUES(6,6);INSERT INTO Plane (Location,TypeID) VALUES(7,7);INSERT INTO Plane (Location,TypeID) VALUES(8,8);INSERT INTO Plane (Location,TypeID) VALUES(9,9);INSERT INTO Plane (Location,TypeID) VALUES(10,10);INSERT INTO Plane (Location,TypeID) VALUES(11,11);INSERT INTO Plane (Location,TypeID) VALUES(12,12);INSERT INTO Plane (Location,TypeID) VALUES(13,13);INSERT INTO Plane (Location,TypeID) VALUES(14,14);INSERT INTO Plane (Location,TypeID) VALUES(15,15);")
       count = self.cur.fetchone()[0]
       if count == 0:
         self.cur.executescript("INSERT INTO PlaneType VALUES(1,'Airbus A320',180);INSERT INTO PlaneType VALUES(2,'Airbus A321',220);INSERT INTO PlaneType VALUES(3,'Airbus A330',300);INSERT INTO PlaneType VALUES(4,'Airbus A350',350);INSERT INTO PlaneType VALUES(5,'Boeing 737-800',189);INSERT INTO PlaneType VALUES(6,'Boeing 737 MAX',210);INSERT INTO PlaneType VALUES(7,'Boeing 747',416);INSERT INTO PlaneType VALUES(8,'Boeing 757',239);INSERT INTO PlaneType VALUES(9,'Boeing 767',290);INSERT INTO PlaneType VALUES(10,'Boeing 777',396);INSERT INTO PlaneType VALUES(11,'Boeing 787',330);INSERT INTO PlaneType VALUES(12,'Embraer E190',114);INSERT INTO PlaneType VALUES(13,'ATR 72',78);INSERT INTO PlaneType VALUES(14,'Bombardier CRJ900',90);INSERT INTO PlaneType VALUES(15,'Airbus A220',145);")
@@ -89,8 +88,6 @@ class DBOperations:
       self.conn.close()
 
 
-
-
   def get_connection(self):
     self.conn = sqlite3.connect("FlightManagement.db")
     self.cur = self.conn.cursor()
@@ -102,6 +99,7 @@ class DBOperations:
     newFlight = Schedule()
     origincountry = ""
     destinationcountry = ""
+
 # Wizard starting with origin country
     while True:
       self.cur.execute("SELECT CountryCode, Name FROM Country")
@@ -191,19 +189,81 @@ class DBOperations:
         print("Please enter a valid date and time.")
 
 
-# Wizard Selecting Plane - Should a plane only be selected if its in the right location for that trip
+# Wizard Selecting Plane - To simplify Ive gone with find planes that are at airports that havent been scheduled. 
     while True:
-      print("Enter B to return to the main menu. \n")
+      self.cur.execute("SELECT PlaneID, TypeName, MaxPassengers, Name FROM Plane JOIN PlaneType ON Plane.TypeID = PlaneType.TypeID WHERE Location = ? AND PlaneID NOT IN (SELECT PlaneID FROM Schedule)", (self.flightorigin))
+      plane = self.cur.fetchall()
+      for i, plane in enumerate(plane, start = 1):
+        print(f"{i}. {plane[1]} Passengers:{plane[2]}" )
+      if len(plane) <= 0:
+        restart = input("No planes avaliable at your location press any key to return to the main menu:  \n")
+        return
+      else:
+        print("Enter B to return to the main menu. \n")
+        choice = input("Enter the Plane: ")
+      if choice.upper() == "B":
+        return
       try:
-        self.cur.execute("SELECT PlaneID, TypeName, MaxPassengers, Name FROM Plane, PlanType WHERE PlannedDepartureDate <= ? AND  AND AirportID != ?",(destinationcountry), (airportid))
-        airport = self.cur.fetchall()
-        for i, airport in enumerate(airport, start = 1):
-          print(f"{i}. {airport[1]}" )
-        flight_date = input("Enter flight date (dd/MM/YYYY HH:MM): ")
-        date_object = datetime.strptime(flight_date, "%d/%m/%Y %H:%M")
-        break
+        choice = int(choice)
+        if 1<= choice <= len(plane):
+          location = plane[choice - 1][0]
+          break
+        print("please choose a valid option.")
       except ValueError:
-        print("Please enter a valid date and time.")
+        print("Please enter a number.")
+
+
+# Wizard Selecting The Captain - this could escalate to pilot location and rules to ensure adaquet rest is given preventing the pilot from being assigned to a flight
+    while True:
+      self.cur.execute("SELECT PilotID, Name, DoB FROM Pilot PilotID NOT IN (SELECT PilotID FROM Schedule WHERE (PlannedDepartureDateTime >= ? AND PlannedDepartureDateTime <= ?) OR (PlannedArrivalDateTime >= ? AND PlannedArrivalDateTime <= ?)", (self.planneddeparture),(self.plannedarrival),(self.planneddeparture),(self.plannedarrival))
+      pilot = self.cur.fetchall()
+      for i, pilot in enumerate(pilot, start = 1):
+        print(f"{i}. {pilot[1]}")
+      if len(pilot) <= 0:
+        restart = input("No pilots available press any key to return to the main menu:  \n")
+        return
+      else:
+        print("Enter B to return to the main menu. \n")
+        choice = input("Enter the Pilot for Captain: ")
+      if choice.upper() == "B":
+        return
+      try:
+        choice = int(choice)
+        if 1<= choice <= len(pilot):
+          captain = pilot[choice - 1][0]
+          break
+        print("please choose a valid option.")
+      except ValueError:
+        print("Please enter a number.")
+
+
+# Wizard Selecting The First Officer - this could escalate to pilot location and rules to ensure adaquet rest is given preventing the pilot from being assigned to a flight
+    while True:
+      self.cur.execute("SELECT PilotID, Name, DoB FROM Pilot PilotID NOT IN (SELECT PilotID FROM Schedule WHERE (PlannedDepartureDateTime >= ? AND PlannedDepartureDateTime <= ?) OR (PlannedArrivalDateTime >= ? AND PlannedArrivalDateTime <= ?)", (self.planneddeparture),(self.plannedarrival),(self.planneddeparture),(self.plannedarrival))
+      pilot = self.cur.fetchall()
+      for i, pilot in enumerate(pilot, start = 1):
+        print(f"{i}. {pilot[1]}")
+      if len(pilot) <= 0:
+        restart = input("No pilots available press any key to return to the main menu:  \n")
+        return
+      else:
+        print("Enter B to return to the main menu. \n")
+        choice = input("Enter the Pilot for First Officer: ")
+      if choice.upper() == "B":
+        return
+      try:
+        choice = int(choice)
+        if 1<= choice <= len(pilot):
+          FirstOfficer = pilot[choice - 1][0]
+          break
+        print("please choose a valid option.")
+      except ValueError:
+        print("Please enter a number.")
+
+#Write code for displaying the Shedule item created and offer the user to submit or cancel the record.
+
+    
+
 
 
   def insert_data(self):
