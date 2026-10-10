@@ -457,15 +457,15 @@ class Schedule:
 
 
 # Function to select Departure Date Time
-  def setDepartureDateTime(self,db,backVis):
+  def setDepartureDateTime(self,db):
     while True:
-      if backVis:
-        print("\nB - Back")
+
+      print("\nB - Back")
       print("C - Cancel\n")
       flightDate = input("Enter flight date (dd/MM/YYYY HH:MM): ")
-      if backVis:
-        if flightDate == "B":
-          return "back"
+
+      if flightDate == "B":
+        return "back"
       if flightDate == "C":
         return "cancel"
       try:
@@ -478,15 +478,14 @@ class Schedule:
 
 
 # Function to Select Arrival Date Time
-  def setArrivalDateTime(self,backVis):
+  def setArrivalDateTime(self):
     while True:
-      if backVis:
-        print("\nB - Back")
+      print("\nB - Back")
       print("C - Cancel\n")
       flightDate = input("Enter flight arrival date (dd/MM/YYYY HH:MM): ")
-      if backVis:
-        if flightDate == "B":
-          return "back"
+    
+      if flightDate == "B":
+        return "back"
       if flightDate == "C":
         return "cancel"
       try:
@@ -507,7 +506,7 @@ class Schedule:
 
 # Function to Select Plane - To simplify Ive gone with find planes that are at airports that havent been scheduled. 
 
-  def setPlane(self,db, backVis):
+  def setPlane(self,db):
     while True:
       db.cur.execute("SELECT PlaneID, TypeName, MaxPassengers, Name FROM Plane JOIN PlaneType ON Plane.TypeID = PlaneType.TypeID WHERE Location = ? AND PlaneID NOT IN (SELECT PlaneID FROM Schedule)", (self.flightorigin))
       plane = db.cur.fetchall()
@@ -516,13 +515,12 @@ class Schedule:
       if len(plane) <= 0:
         restart = input("No planes avaliable at your location press any key to return to the main menu:  \n")
         return
-      if backVis:
-        print("\nB - Back")
+      print("\nB - Back")
       print("C - Cancel\n")
       choice = input("Enter the plane you would like to schedule: ").upper()
-      if backVis:
-        if choice == "B":
-          return "back"
+  
+      if choice == "B":
+        return "back"
       if choice == "C":
         return "cancel"
       try:
@@ -535,7 +533,7 @@ class Schedule:
         print("Please enter a number.")
 
 # Function to Select The Captain - this could escalate to pilot location and rules to ensure adaquet rest is given preventing the pilot from being assigned to a flight
-  def setCaptain(self,db, backVis): 
+  def setCaptain(self,db): 
     while True:
       db.cur.execute("SELECT PilotID, Name, DoB FROM Pilot PilotID NOT IN (SELECT PilotID FROM Schedule WHERE (PlannedDepartureDateTime >= ? AND PlannedDepartureDateTime <= ?) OR (PlannedArrivalDateTime >= ? AND PlannedArrivalDateTime <= ?)", (self.planneddeparture),(self.plannedarrival),(self.planneddeparture),(self.plannedarrival))
       pilot = db.cur.fetchall()
@@ -544,14 +542,14 @@ class Schedule:
       if len(pilot) <= 0:
         restart = input("No pilots available press any key to return to the main menu:  \n")
         return
-      if backVis:
-        print("\nB - Back")
+     
+      print("\nB - Back")
       print("C - Cancel\n")
       print("S - Skip\n")
       choice = input("Enter the pilot to Captain the plane: ").upper()
-      if backVis:
-        if choice == "B":
-          return "back"
+
+      if choice == "B":
+        return "back"
       if choice == "C":
         return "cancel"
       if choice == "S":
@@ -568,7 +566,7 @@ class Schedule:
 
 
 # Function to Select The First Officer - this could escalate to pilot location and rules to ensure adaquet rest is given preventing the pilot from being assigned to a flight
-  def setFirstOfficer(self,db, backVis):  
+  def setFirstOfficer(self,db):  
     while True:
       db.cur.execute("SELECT PilotID, Name, DoB FROM Pilot PilotID NOT IN (SELECT PilotID FROM Schedule WHERE (PlannedDepartureDateTime >= ? AND PlannedDepartureDateTime <= ?) OR (PlannedArrivalDateTime >= ? AND PlannedArrivalDateTime <= ?)", (self.planneddeparture),(self.plannedarrival),(self.planneddeparture),(self.plannedarrival))
       pilot = db.cur.fetchall()
@@ -577,14 +575,14 @@ class Schedule:
       if len(pilot) <= 0:
         restart = input("No pilots available press any key to return to the main menu:  \n")
         return
-      if backVis:
-        print("\nB - Back")
+
+      print("\nB - Back")
       print("C - Cancel\n")
       print("S - Skip\n")
       choice = input("Enter the Pilot for First Officer: ").upper()
-      if backVis:
-        if choice == "B":
-          return "back"
+
+      if choice == "B":
+        return "back"
       if choice == "C":
         return "cancel"
       if choice == "S":
@@ -599,17 +597,17 @@ class Schedule:
         print("Please enter a number.")
 
 #Function for displaying the selected items and offer the user to submit or cancel or continue to edit the record.
-  def confirmBooking(self,db, backVis):
+  def confirmBooking(self,db):
     while True:
       print(f"Oringin:{self.originAirport}\nDestination:{self.destinationAirport}\nDeparture:{self.plannedDeparture}\nPlane:{self.planeId}\n")
-      if backVis:
-        print("\nB - Back")
+      
+      print("\nB - Back")
       print("C - Cancel\n")
       print("S - Save\n")
       choice = input("Do you want to store the new scheduled item? ").upper()
-      if backVis:
-        if choice == "B":
-          return "back"
+  
+      if choice == "B":
+        return "back"
       if choice == "C":
         return "cancel"
       if choice == "S":
