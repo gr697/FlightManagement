@@ -136,7 +136,7 @@ class DBOperations:
     finally:
       self.conn.close()
 
-#Function to search by criteria Destination, Status, DepartureDate singularly or All 3
+#Function to search based on one or multiple criteria
 
   def viewFlightsByCriteria(self):
     while True:
@@ -189,6 +189,34 @@ class DBOperations:
 
 
 
+
+
+
+
+#Function to edit a particular flights details  
+  def updateFlightInformation(self):
+    try:
+      self.get_connection()
+      flightID = int(input("Enter FlightNo: "))
+      self.cur.execute(self.sql_search, tuple(str(flightID)))
+      result = self.cur.fetchone()
+      if type(result) == type(tuple()):
+        for index, detail in enumerate(result):
+          if index == 0:
+            print("Flight ID: " + str(detail))
+          elif index == 1:
+            print("Flight Origin: " + detail)
+          elif index == 2:
+            print("Flight Destination: " + detail)
+          else:
+            print("Status: " + str(detail))
+      else:
+        print("No Record")
+
+    except Exception as e:
+      print(e)
+    finally:
+      self.conn.close()
 
   def update_data(self):
     try:
