@@ -14,8 +14,7 @@ class DBOperations:
   sql_create_country_table = '''CREATE TABLE IF NOT EXISTS Country(CountryCode CHAR(3) NOT NULL, CountryName VARCHAR(200) NOT NULL, Continent VARCHAR (200) NOT NULL, PRIMARY KEY (CountryCode))'''
   sql_create_journeytime_table = '''CREATE TABLE IF NOT EXISTS JourneyTime(OriginID INTEGER, DestinationID INTEGER, TotalTravelTimeMins INTEGER NOT NULL, PRIMARY KEY (OriginID, DestinationID), FOREIGN KEY (DestinationID) REFERENCES Airport(AirportID), FOREIGN KEY (OriginID) REFERENCES Airport(AirportID))'''
   sql_insert = '''INSERT INTO Schedule(PlannedArrivalDateTime, PlannedDepartureDateTime, ActualArrivalDateTime, ActualDepartureDateTime, PlaneID, ToAirportID, FromAirportID) VALUES (?, ?, ?, ?, ?, ?, ?)'''
-  sql_select_all = "select * from TableName"
-  sql_search = "select * from TableName where FlightID = ?"
+  sql_search = '''SELECT * FROM Schedule WHERE FlightID = ?'''
   sql_alter_data = ""
   sql_update_data = ""
   sql_delete_data = ""
@@ -97,17 +96,9 @@ class DBOperations:
 
   def addNewFlight(self):
     newFlight = Schedule()
-    steps = [newFlight.setOriginCountry, newFlight.setOriginAirport, newFlight.setDestinationCountry, newFlight.setDestinationAirport, newFlight.setDepartureDateTime, newFlight.setPlane, newFlight.setCaptain, newFlight.setFirstOfficer, newFlight.confirmBooking]
-    currentStep = 0
-    while 0 <= currentStep < len(steps):
-      result = steps[currentStep](self)
-      if result == "back":
-        currentStep -=1
-      elif result == "cancel":
-        break
-      else:
-        currentStep +=1
-    self.storeFlight(newFlight)
+    result = self.runWizard([newFlight.setOriginCountry, newFlight.setOriginAirport, newFlight.setDestinationCountry, newFlight.setDestinationAirport, newFlight.setDepartureDateTime, newFlight.setPlane, newFlight.setCaptain, newFlight.setFirstOfficer, newFlight.confirmBooking],self)
+    if result != "cancel":
+      self.storeFlight(newFlight)
 
 
   def storeFlight(self, Flight):
@@ -187,36 +178,107 @@ class DBOperations:
           print("-" * 30)
       return
 
-
-
-
-
-
-
+    
 #Function to edit a particular flights details  
   def updateFlightInformation(self):
-    try:
-      self.get_connection()
-      flightID = int(input("Enter FlightNo: "))
-      self.cur.execute(self.sql_search, tuple(str(flightID)))
-      result = self.cur.fetchone()
-      if type(result) == type(tuple()):
-        for index, detail in enumerate(result):
-          if index == 0:
-            print("Flight ID: " + str(detail))
-          elif index == 1:
-            print("Flight Origin: " + detail)
-          elif index == 2:
-            print("Flight Destination: " + detail)
-          else:
-            print("Status: " + str(detail))
-      else:
-        print("No Record")
+    while True:
+      try:
+        self.get_connection()
+        flightID = int(input("Enter FlightID: "))
+        self.cur.execute(self.sql_search, tuple(str(flightID)))
+        result = self.cur.fetchone()
+        if result is not None:
+          flight = Schedule()
+          flight.flightID = result[0]
+          flight.PlannedArrival = result[1]
+          flight.plannedDeparture = result[2]
+          flight.actualArrival = result[3]
+          flight.actualDeparture = result[4]
+          flight.planeId = result[5]
+          flight.destinationAirport = result[6]
+          flight.originAirport = result[7]
+          flight.captain = result[8]
+          flight.firstOfficer = result[9]
+          flight.status = result[10]
 
-    except Exception as e:
-      print(e)
-    finally:
-      self.conn.close()
+          print("\nFlight Details")
+          print("-" * 50)
+          print(f"Flight ID: {flight.flightID}")
+          print(f"1. Origin Airport: {flight.originAirport}")
+          print(f"2. Destination Airport: {flight.destinationAirport}")
+          print(f"3. Planned Departure: {flight.plannedDeparture}")
+          print(f"   Planned Arrival: {flight.PlannedArrival} (Calculated)")
+          print(f"4. Actual Departure: {flight.actualDeparture}")
+          print(f"5. Actual Arrival: {flight.actualArrival}")
+          print(f"6. Plane ID: {flight.planeId}")
+          print(f"7. Captain ID: {flight.captain}")
+          print(f"8. First Officer ID: {flight.firstOfficer}")
+          print(f"9. Status: {flight.status}")
+          print("-" * 50)
+          choice = input("Select a field to edit (or B to return): ")
+          if choice.upper() == "B":
+            return
+          try:
+            choice = int(choice)
+            if 1<= choice <= 9:
+              if choice == 1:
+                self.runWizard([flight.setOriginCountry,flight.setOriginAirport],self)
+              if choice == 2:
+                self.runWizard([flight.setDestinationCountry,flight.setDestinationAirport],self)
+              if choice == 3:
+                result = flight.setDepartureDateTime(self,False)
+                if result in ("back","cancel"):
+                  continue
+              if choice == 4:
+                result = flight.setActualDeparture(self,False)
+                if result in ("back","cancel"):
+                  continue
+              if choice == 5:
+                result = flight.setActualArrival(self,False)
+                if result in ("back","cancel"):
+                  continue
+              if choice == 6:
+                result = flight.setPlane()
+                if result in ("back","cancel"):
+                  continue
+              if choice == 7:
+                result = flight.setCaptain()
+                if result in ("back","cancel"):
+                  continue
+              if choice == 8:
+                result = flight.setFirstOfficer()
+                if result in ("back","cancel"):
+                  continue
+              if choice == 9:
+                result = flight.setStatus()
+                if result in ("back","cancel"):
+                  continue
+            print("please choose a valid option.")
+          except ValueError:
+            print("Please enter a number.")
+
+        else:
+          print("No Record, enter a valid FlightID.")
+      except Exception as e:
+        print(e)
+
+
+
+  def runWizard(self,steps,db):
+    currentStep = 0
+    while 0 <= currentStep < len(steps):
+      result = steps[db]
+      if result == "back":
+        currentStep -=1
+      elif result == "cancel":
+        return "cancel"
+      else:
+        currentStep += 1
+
+    return
+
+
+
 
   def update_data(self):
     try:
@@ -366,13 +428,15 @@ class Schedule:
 
 
 # Function to select Departure Date Time
-  def setDepartureDateTime(self,db):
+  def setDepartureDateTime(self,db,backVis):
     while True:
-      print("\nB - Back")
+      if backVis:
+        print("\nB - Back")
       print("C - Cancel\n")
       flightDate = input("Enter flight date (dd/MM/YYYY HH:MM): ")
-      if flightDate == "B":
-        return "back"
+      if backVis:
+        if flightDate == "B":
+          return "back"
       if flightDate == "C":
         return "cancel"
       try:
@@ -385,13 +449,15 @@ class Schedule:
 
 
 # Function to Select Arrival Date Time
-  def setArrivalDateTime(self):
+  def setArrivalDateTime(self,backVis):
     while True:
-      print("\nB - Back")
+      if backVis:
+        print("\nB - Back")
       print("C - Cancel\n")
       flightDate = input("Enter flight arrival date (dd/MM/YYYY HH:MM): ")
-      if flightDate == "B":
-        return "back"
+      if backVis:
+        if flightDate == "B":
+          return "back"
       if flightDate == "C":
         return "cancel"
       try:
@@ -412,7 +478,7 @@ class Schedule:
 
 # Function to Select Plane - To simplify Ive gone with find planes that are at airports that havent been scheduled. 
 
-  def setPlane(self,db):
+  def setPlane(self,db, backVis):
     while True:
       db.cur.execute("SELECT PlaneID, TypeName, MaxPassengers, Name FROM Plane JOIN PlaneType ON Plane.TypeID = PlaneType.TypeID WHERE Location = ? AND PlaneID NOT IN (SELECT PlaneID FROM Schedule)", (self.flightorigin))
       plane = db.cur.fetchall()
@@ -421,11 +487,13 @@ class Schedule:
       if len(plane) <= 0:
         restart = input("No planes avaliable at your location press any key to return to the main menu:  \n")
         return
-      print("\nB - Back")
+      if backVis:
+        print("\nB - Back")
       print("C - Cancel\n")
       choice = input("Enter the plane you would like to schedule: ").upper()
-      if choice == "B":
-        return "back"
+      if backVis:
+        if choice == "B":
+          return "back"
       if choice == "C":
         return "cancel"
       try:
@@ -438,7 +506,7 @@ class Schedule:
         print("Please enter a number.")
 
 # Function to Select The Captain - this could escalate to pilot location and rules to ensure adaquet rest is given preventing the pilot from being assigned to a flight
-  def setCaptain(self,db): 
+  def setCaptain(self,db, backVis): 
     while True:
       db.cur.execute("SELECT PilotID, Name, DoB FROM Pilot PilotID NOT IN (SELECT PilotID FROM Schedule WHERE (PlannedDepartureDateTime >= ? AND PlannedDepartureDateTime <= ?) OR (PlannedArrivalDateTime >= ? AND PlannedArrivalDateTime <= ?)", (self.planneddeparture),(self.plannedarrival),(self.planneddeparture),(self.plannedarrival))
       pilot = db.cur.fetchall()
@@ -447,12 +515,14 @@ class Schedule:
       if len(pilot) <= 0:
         restart = input("No pilots available press any key to return to the main menu:  \n")
         return
-      print("\nB - Back")
+      if backVis:
+        print("\nB - Back")
       print("C - Cancel\n")
       print("S - Skip\n")
       choice = input("Enter the pilot to Captain the plane: ").upper()
-      if choice == "B":
-        return "back"
+      if backVis:
+        if choice == "B":
+          return "back"
       if choice == "C":
         return "cancel"
       if choice == "S":
@@ -469,7 +539,7 @@ class Schedule:
 
 
 # Function to Select The First Officer - this could escalate to pilot location and rules to ensure adaquet rest is given preventing the pilot from being assigned to a flight
-  def setFirstOfficer(self,db):  
+  def setFirstOfficer(self,db, backVis):  
     while True:
       db.cur.execute("SELECT PilotID, Name, DoB FROM Pilot PilotID NOT IN (SELECT PilotID FROM Schedule WHERE (PlannedDepartureDateTime >= ? AND PlannedDepartureDateTime <= ?) OR (PlannedArrivalDateTime >= ? AND PlannedArrivalDateTime <= ?)", (self.planneddeparture),(self.plannedarrival),(self.planneddeparture),(self.plannedarrival))
       pilot = db.cur.fetchall()
@@ -478,12 +548,14 @@ class Schedule:
       if len(pilot) <= 0:
         restart = input("No pilots available press any key to return to the main menu:  \n")
         return
-      print("\nB - Back")
+      if backVis:
+        print("\nB - Back")
       print("C - Cancel\n")
       print("S - Skip\n")
       choice = input("Enter the Pilot for First Officer: ").upper()
-      if choice == "B":
-        return "back"
+      if backVis:
+        if choice == "B":
+          return "back"
       if choice == "C":
         return "cancel"
       if choice == "S":
@@ -498,15 +570,17 @@ class Schedule:
         print("Please enter a number.")
 
 #Function for displaying the selected items and offer the user to submit or cancel or continue to edit the record.
-  def confirmBooking(self,db):
+  def confirmBooking(self,db, backVis):
     while True:
       print(f"Oringin:{self.originAirport}\nDestination:{self.destinationAirport}\nDeparture:{self.plannedDeparture}\nPlane:{self.planeId}\n")
-      print("\nB - Back")
+      if backVis:
+        print("\nB - Back")
       print("C - Cancel\n")
       print("S - Save\n")
       choice = input("Do you want to store the new scheduled item? ").upper()
-      if choice == "B":
-        return "back"
+      if backVis:
+        if choice == "B":
+          return "back"
       if choice == "C":
         return "cancel"
       if choice == "S":
