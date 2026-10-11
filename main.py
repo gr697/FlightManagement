@@ -13,7 +13,7 @@ class DBOperations:
   sql_create_airport_table = '''CREATE TABLE IF NOT EXISTS Airport(AirportID INTEGER PRIMARY KEY AUTOINCREMENT, AirportName VARCHAR(200) NOT NULL, CountryCode VARCHAR(3) NOT NULL, FOREIGN KEY (CountryCode) REFERENCES Country(CountryCode))'''
   sql_create_country_table = '''CREATE TABLE IF NOT EXISTS Country(CountryCode CHAR(3) NOT NULL, CountryName VARCHAR(200) NOT NULL, Continent VARCHAR (200) NOT NULL, PRIMARY KEY (CountryCode))'''
   sql_create_journeytime_table = '''CREATE TABLE IF NOT EXISTS JourneyTime(OriginID INTEGER, DestinationID INTEGER, TotalTravelTimeMins INTEGER NOT NULL, PRIMARY KEY (OriginID, DestinationID), FOREIGN KEY (DestinationID) REFERENCES Airport(AirportID), FOREIGN KEY (OriginID) REFERENCES Airport(AirportID))'''
-  sql_insert = '''INSERT INTO Schedule(PlannedArrivalDateTime, PlannedDepartureDateTime, ActualArrivalDateTime, ActualDepartureDateTime, PlaneID, ToAirportID, FromAirportID) VALUES (?, ?, ?, ?, ?, ?, ?)'''
+  sql_insert = '''INSERT INTO Schedule(PlannedArrivalDateTime, PlannedDepartureDateTime, ActualArrivalDateTime, ActualDepartureDateTime, PlaneID, ToAirportID, FromAirportID, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'''
   sql_search_flight = '''SELECT * FROM Schedule WHERE FlightID = ?'''
   sql_search_pilot = '''SELECT * FROM Schedule WHERE FirstOfficer = ? OR Captain = ?'''
 
@@ -95,6 +95,7 @@ class DBOperations:
     newFlight = Schedule()
     result = self.runWizard([newFlight.setOriginCountry, newFlight.setOriginAirport, newFlight.setDestinationCountry, newFlight.setDestinationAirport, newFlight.setDepartureDateTime, newFlight.setPlane, newFlight.setCaptain, newFlight.setFirstOfficer, newFlight.confirmBooking],self)
     if result != "cancel":
+      newFlight.setAutoStatus(self,"Planned")
       self.storeFlight(newFlight)
 
 
@@ -410,25 +411,7 @@ class DBOperations:
       flight.status = result[10]
     return flight
 
-
-
-  def update_data(self):
-    try:
-      self.get_connection()
-
-      # Update statement
-
-      if result.rowcount != 0:
-        print(str(result.rowcount) + "Row(s) affected.")
-      else:
-        print("Cannot find this record in the database")
-
-    except Exception as e:
-      print(e)
-    finally:
-      self.conn.close()
-
-
+  
 # Define Delete_data method to delete data from the table. The user will need to input the flight id to delete the corrosponding record.
 
   def delete_data(self):
