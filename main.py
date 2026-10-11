@@ -883,7 +883,7 @@ class Flight:
 
 #Boarding only manual trigger - All others could be triggered autonomously
   def setAutoStatus(self, status):
-    if status not in ['Planned','Departed','Landed', 'Available'] :
+    if status not in ['Planned', 'Boarding','Departed','Landed', 'Available'] :
       print("Status is not valid")
     self.status = status
 
