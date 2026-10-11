@@ -314,37 +314,48 @@ class DBOperations:
 
   def assignPilot(self):
     flight = self.getFlight()
+    if flight is None:
+      return
     while True:
+      self.cur.execute("SELECT Name FROM Pilot WHERE PilotID = ?",(flight.captain,))
+      capt = self.cur.fetchone()
+      captName = capt[0] if capt else "None"
+      self.cur.execute("SELECT Name FROM Pilot WHERE PilotID = ?",(flight.firstOfficer,))
+      firstOff = self.cur.fetchone()
+      firstOffName = firstOff[0] if firstOff else "None"
+      print("\nFlight Details")
+      print(f"1. Edit Captain: {flight.captain} {captName}")
+      print(f"2. Edit First Officer: {flight.firstOfficer} {firstOffName}")
+      print("3.Remove Captain")
+      print("4.Remove First Officer")
+      print("5.Save Changes and Return to Main Menu")
+      print("6.Return")
+      print("-" * 50)
       try:
-        print("\nFlight Details")
-        print("-" * 50)
-        print(f"1. Captain ID: {flight.captain}")
-        print(f"2. First Officer ID: {flight.firstOfficer}")
-        print("3. Save Changes and Return to Main Menu")
-        print("-" * 50)
-        choice = input("Select a field to edit (or B to return): ")
-        if choice.upper() == "B":
+       choice = int(input("Select an option: "))
+       if 1<= choice <= 6:
+        if choice == 1:
+          result = flight.setCaptain()
+          if result in ("back","cancel"):
+            continue
+        elif choice == 2:
+          result = flight.setFirstOfficer()
+          if result in ("back","cancel"):
+            continue
+        elif choice == 3:
+          flight.captain = None
+        elif choice == 4:
+          flight.firstOfficer = None              
+        elif choice == 5:
+          self.updateFlight(flight)
           return
-        try:
-          choice = int(choice)
-          if 1<= choice <= 10:
-            if choice == 1:
-              result = flight.setCaptain()
-              if result in ("back","cancel"):
-                continue
-            elif choice == 2:
-              result = flight.setFirstOfficer()
-              if result in ("back","cancel"):
-                continue
-            elif choice == 3:
-              self.updateFlight(flight)
-              return
-            else:
-              print("please choose a valid option.")
-        except ValueError:
-          print("Please enter a number.")
-      except Exception as e:
-        print(e)
+        elif choice == 6:
+          return
+       else:
+        print("please choose a valid option.")
+      except ValueError:
+         print("Please enter a number.")
+  
 
 
   def runWizard(self,steps,db):
@@ -362,6 +373,8 @@ class DBOperations:
 
   def updateDestinationInformation(self):
     flight = self.getFlight()
+    if flight is None:
+      return
     while True:
       try:
         print("\nFlight Details")
@@ -390,38 +403,54 @@ class DBOperations:
 
 
   def getFlight(self):
-    flightID = int(input("Enter FlightID: "))
-    self.get_connection()
-    self.cur.execute(self.sql_search_flight, tuple(str(flightID)))
-    result = self.cur.fetchone()
-    if result is None:
-      print("No Record, enter a valid FlightID.")
-    elif result is not None:
-      flight = Schedule()
-      flight.flightID = result[0]
-      flight.PlannedArrival = result[1]
-      flight.plannedDeparture = result[2]
-      flight.actualArrival = result[3]
-      flight.actualDeparture = result[4]
-      flight.planeId = result[5]
-      flight.destinationAirport = result[6]
-      flight.originAirport = result[7]
-      flight.captain = result[8]
-      flight.firstOfficer = result[9]
-      flight.status = result[10]
-    return flight
+    while True:
+      flightID = input("Enter FlightID (C=Cancel): ")
+      if flightID.upper() == "C":
+        return
+      try:
+        flightID = int(flightID)
+      except ValueError:
+        print("Please enter a valid FlightID")
+        continue
+      self.get_connection()
+      self.cur.execute(self.sql_search_flight, tuple(str(flightID)))
+      result = self.cur.fetchone()
+      if result is None:
+        print("No Record, enter a valid FlightID.")
+        continue
+      elif result is not None:
+        flight = Schedule()
+        flight.flightID = result[0]
+        flight.PlannedArrival = result[1]
+        flight.plannedDeparture = result[2]
+        flight.actualArrival = result[3]
+        flight.actualDeparture = result[4]
+        flight.planeId = result[5]
+        flight.destinationAirport = result[6]
+        flight.originAirport = result[7]
+        flight.captain = result[8]
+        flight.firstOfficer = result[9]
+        flight.status = result[10]
+      return flight
 
   
 # Define Delete_data method to delete data from the table. The user will need to input the flight id to delete the corrosponding record.
 
-  def delete_data(self):
+  def deleteFlight(self):
+    flight = self.getFlight()
+    if flight is None:
+      return
+    confirm = input(f"Delete Flight {flight.flightID}? (Y/N): ").upper()
+    if confirm != "Y":
+      return
     try:
       self.get_connection()
-
-      if result.rowcount != 0:
-        print(str(result.rowcount) + "Row(s) affected.")
+      self.cur.execute("DELETE FROM Schedule WHERE FlightID = ?", (flight.flightID))
+      self.conn.commit()
+      if self.cur.rowcount > 0:
+        print(f"{self.cur.rowcount} row(s) deleted.")
       else:
-        print("Cannot find this record in the database")
+        print("Cannot find this record in the database.")
 
     except Exception as e:
       print(e)
@@ -800,10 +829,11 @@ while True:
   print(" 1. Add a New Flight")
   print(" 2. View Flights by Criteria")
   print(" 3. Update Flight Information")
-  print(" 4. Assign Pilot to Flight")
+  print(" 4. Delete/Assign Pilot on scheduled Flight")
   print(" 5. View Pilot Schedule")
   print(" 6. View/Update Destination Information")
-  print(" 7. Exit\n")
+  print(" 7. Delete Flight")
+  print(" 8. Exit\n")
 
   __choose_menu = int(input("Enter your choice: "))
   if __choose_menu == 1:
@@ -819,6 +849,8 @@ while True:
   elif __choose_menu == 6:
     db_ops.updateDestinationInformation()
   elif __choose_menu == 7:
+    db_ops.deleteFlight()
+  elif __choose_menu == 8:
     exit(0)
   else:
     print("Invalid Choice")
