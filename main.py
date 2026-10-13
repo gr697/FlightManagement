@@ -6,6 +6,7 @@ import datetime
 
 
 class DBOperations:
+# reusable SQL statements
   sql_create_pilot_table = '''CREATE TABLE IF NOT EXISTS Pilot(PilotID INTEGER PRIMARY KEY AUTOINCREMENT, Name VARCHAR(40) NOT NULL, DoB DATE NOT NULL, ContactNumber INTEGER NOT NULL)'''
   sql_create_plane_table = '''CREATE TABLE IF NOT EXISTS Plane(PlaneID INTEGER PRIMARY KEY AUTOINCREMENT, Location INTEGER NOT NULL, TypeID INTEGER NOT NULL, FOREIGN KEY (TypeID) REFERENCES PlaneType(TypeID), FOREIGN KEY (Location) REFERENCES Airport(AirportID))'''
   sql_create_planetype_table = '''CREATE TABLE IF NOT EXISTS PlaneType(TypeID INTEGER PRIMARY KEY AUTOINCREMENT, TypeName VARCHAR(100) NOT NULL, MaxPassengers INTEGER NOT NULL)'''
@@ -16,10 +17,13 @@ class DBOperations:
   sql_insert = '''INSERT INTO Flight(PlannedArrivalDateTime, PlannedDepartureDateTime, ActualArrivalDateTime, ActualDepartureDateTime, PlaneID, DestinationAirportID, OriginAirportID, FirstOfficer, Captain, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'''
   sql_search_flight = '''SELECT * FROM Flight WHERE FlightID = ?'''
   sql_search_pilot = '''SELECT * FROM Flight WHERE FirstOfficer = ? OR Captain = ?'''
+  sql_journey_time = '''SELECT TotalTravelTimeMins FROM JourneyTime WHERE OriginID = ? AND DestinationID = ?'''
+  sql_available_pilots = "SELECT PilotID, Name, DoB FROM Pilot WHERE PilotID != ? AND PilotID NOT IN (SELECT Captain FROM Flight WHERE FlightID != ? AND Captain IS NOT NULL AND PlannedDepartureDateTime < ? AND PlannedArrivalDateTime > ? UNION SELECT FirstOfficer FROM Flight WHERE FlightID != ? AND FirstOfficer IS NOT NULL AND PlannedDepartureDateTime < ? AND PlannedArrivalDateTime > ?)"
   sql_update = '''UPDATE Flight SET PlannedArrivalDateTime = ?, PlannedDepartureDateTime = ?, ActualArrivalDateTime = ?, ActualDepartureDateTime = ?, PlaneID = ?, DestinationAirportID = ?, OriginAirportID = ?, FirstOfficer = ?, Captain = ?, Status = ? WHERE FlightID = ?'''
 
 
-
+#database initialisation where tables are created if 
+#they dont exist and populate the tables with test data if the tables are empty
   def __init__(self):
     try:
       self.conn = sqlite3.connect("FlightManagement.db")
@@ -83,13 +87,13 @@ class DBOperations:
     except Exception as e:
       print(e)
 
-
+# Creates connection for database operations
   def get_connection(self):
     self.conn = sqlite3.connect("FlightManagement.db")
     self.cur = self.conn.cursor()
 
 
-# Wizard to manage flight input
+# Funtion to manage the creation of new Flight records
 
   def addNewFlight(self):
     newFlight = Flight()
@@ -98,6 +102,7 @@ class DBOperations:
      newFlight.setAutoStatus("Planned")
      self.storeFlight(newFlight)
 
+# Function to create a new entry in the flight table based on the values stored within the Flight object
 
   def storeFlight(self, Flight):
     try:
@@ -109,33 +114,17 @@ class DBOperations:
       print(e)
 
 
+#Updates flights records based on changes made to the values within the flight object 
   def updateFlight(self, flight):
     try:
-        self.cur.execute(
-            self.sql_update,
-            (
-              flight.plannedArrival,
-              flight.plannedDeparture,
-              flight.actualArrival,
-              flight.actualDeparture,
-              flight.planeId,
-              flight.destinationAirport,
-              flight.originAirport,
-              flight.firstOfficer,
-              flight.captain,
-              flight.status,
-              flight.flightID
-            )
-        )
-
+        self.cur.execute(self.sql_update,(flight.plannedArrival,flight.plannedDeparture,flight.actualArrival,flight.actualDeparture,flight.planeId,flight.destinationAirport,flight.originAirport,flight.firstOfficer,flight.captain, flight.status,flight.flightID))
         self.conn.commit()
-
     except Exception as e:
         self.conn.rollback()
         print(e)
 
 
-#Function to search based on one or multiple criteria
+#Function to search flight records based on none or multiple criteria
 
   def viewFlightsByCriteria(self):
     while True:
@@ -186,7 +175,7 @@ class DBOperations:
 
 
  
-
+# Function to search for flights where the pilot is the first officer or captain.
 
   def getPilotFlight(self):
     while True:
@@ -211,7 +200,8 @@ class DBOperations:
 
     
     
-#Function to edit a particular flights details  
+#Function to edit a flight details through a workflow based on the flight status.
+
   def updateFlightInformation(self):
     flight = self.getFlight()
     if flight is None:
@@ -228,6 +218,7 @@ class DBOperations:
     return
 
 
+#Edit menu for a planned flight
   def PlannedFlightMenu(self, flight):
     while True:
           try:
@@ -284,6 +275,7 @@ class DBOperations:
             print(e)
 
 
+#Edit menu for a boarding flight
   def BoardingFlightMenu(self,flight):
       while True:
             try:
@@ -310,6 +302,8 @@ class DBOperations:
             except Exception as e:
               print(e)
 
+
+#Edit Menu for a departed flight
   def DepartedFlightMenu(self,flight):
       while True:
             try:
@@ -336,6 +330,8 @@ class DBOperations:
             except Exception as e:
               print(e)
 
+
+#Edit menu for a landed flight
   def LandedFlightMenu(self,flight):
       while True:
             try:
@@ -361,43 +357,21 @@ class DBOperations:
             except Exception as e:
               print(e)
 
+
+#CompleteFlight sequence to set staus and update the database.
   def completeFlight(self, flight):
     try:
         flight.setAutoStatus("Complete")
-
-        self.cur.execute(
-            self.sql_update,
-            (
-                flight.plannedArrival,
-                flight.plannedDeparture,
-                flight.actualArrival,
-                flight.actualDeparture,
-                flight.planeId,
-                flight.destinationAirport,
-                flight.originAirport,
-                flight.firstOfficer,
-                flight.captain,
-                flight.status,
-                flight.flightID
-            )
-        )
-
-        self.cur.execute(
-            """
-            UPDATE Plane
-            SET Location = ?
-            WHERE PlaneID = ?
-            """,
-            (flight.destinationAirport, flight.planeId)
-        )
-
+        self.cur.execute(self.sql_update,(flight.plannedArrival,flight.plannedDeparture,flight.actualArrival,flight.actualDeparture,flight.planeId,flight.destinationAirport,flight.originAirport,flight.firstOfficer,flight.captain,flight.status,flight.flightID))
+        self.cur.execute("""UPDATE Plane SET Location = ? WHERE PlaneID = ?""",(flight.destinationAirport, flight.planeId))
         self.conn.commit()
         print("Flight completed and plane location updated.")
-
     except Exception as e:
         self.conn.rollback()
         print(e)
 
+
+#Diplay code for flight details based on the row returned from the flight table
   def displayFlightSummary(self, flight):
        self.cur.execute("SELECT AirportName FROM Airport WHERE AirportID = ?", (flight[7],))
        origin = self.cur.fetchone()
@@ -422,6 +396,8 @@ class DBOperations:
        print(f"Status: {flight[10]}")
        print("-" * 30)
 
+
+#Diplay code for flight details based on a flight object
   def displayFlightObject(self,flight):
     self.cur.execute("SELECT AirportName FROM Airport WHERE AirportID = ?", (flight.originAirport,))
     origin = self.cur.fetchone()
@@ -448,7 +424,8 @@ class DBOperations:
     print(f"Status: {flight.status}")
     print("-" * 30)
 
-  
+
+# Menu to assign Pilots using the Main Menu feature
   def assignPilot(self):
       flight = self.getFlight()
       if flight is None:
@@ -497,7 +474,7 @@ class DBOperations:
         print("Please enter a number.")
   
 
-
+#Wizard function to control new flight and edit destination wizards
   def runWizard(self,steps,db):
     currentStep = 0
     while 0 <= currentStep < len(steps):
@@ -511,7 +488,7 @@ class DBOperations:
         currentStep += 1
     return
 
-
+#Function to edit the destination menu triggered from the main menu.
   def updateDestinationInformation(self):
     flight = self.getFlight()
     if flight is None:
@@ -547,6 +524,8 @@ class DBOperations:
         print(e)
 
 
+
+#function to search for a flight, and create a flight object in the system which can be worked on during edit menus.
   def getFlight(self):
     while True:
       flightID = input("Enter FlightID (C=Cancel): ")
@@ -578,7 +557,7 @@ class DBOperations:
       return flight
 
   
-# Define Delete_data method to delete data from the table. The user will need to input the flight id to delete the corrosponding record.
+# delete flight locates a flight record based on the flightID and removes the flight record only.
 
   def deleteFlight(self):
     flight = self.getFlight()
@@ -602,7 +581,7 @@ class DBOperations:
       self.conn.rollback()
       print(e)
 
-#forgot to add management of the status
+# New class for flight, used to create an editable flight object for users to make changes to prior to committing back to the database
 class Flight:
 
   def __init__(self):
@@ -739,21 +718,18 @@ class Flight:
 
 # Autopopulate Arrival Date Time
   def setArrivalDateTime(self, db):
+      db.cur.execute(DBOperations.sql_journey_time,(self.originAirport, self.destinationAirport))
+      result = db.cur.fetchone()
       if self.status == "Departed":
-        db.cur.execute('''SELECT TotalTravelTimeMins FROM JourneyTime WHERE OriginID = ? AND DestinationID = ?''',(self.originAirport,self.destinationAirport))
-        result = db.cur.fetchone()
         if result is None:
           print("No journey time found for this route.")
           return False
         traveltime = result[0]
         self.plannedArrival = self.actualDeparture + datetime.timedelta(minutes = traveltime)
       else:
-        db.cur.execute('''SELECT TotalTravelTimeMins FROM JourneyTime WHERE OriginID = ? AND DestinationID = ?''',(self.originAirport,self.destinationAirport))
-        result = db.cur.fetchone()
         if result is None:
           print("No journey time found for this route.")
           return False
-
         traveltime = result[0]
         self.plannedArrival = self.plannedDeparture + datetime.timedelta(minutes = traveltime)
 
@@ -799,7 +775,7 @@ class Flight:
 
 
 
-# Function to Select Plane - To simplify Ive gone with find planes that are at airports that havent been Flightd. 
+# Function to Select Plane 
 
   def setPlane(self,db):
     while True:
@@ -829,11 +805,12 @@ class Flight:
         print("Please enter a number.")
 
 
-# Function to Select The Captain - this could escalate to pilot location and rules to ensure adaquet rest is given preventing the pilot from being assigned to a flight
+# Function to Select The Captain 
   def setCaptain(self,db): 
     while True:
       currentFlightID = self.flightID if self.flightID is not None else -1
-      db.cur.execute("SELECT PilotID, Name, DoB FROM Pilot WHERE PilotID NOT IN (SELECT Captain FROM Flight WHERE FlightID != ? AND Captain IS NOT NULL AND PlannedDepartureDateTime < ? AND PlannedArrivalDateTime > ? UNION SELECT FirstOfficer FROM Flight WHERE FlightID != ? AND FirstOfficer IS NOT NULL AND PlannedDepartureDateTime < ? AND PlannedArrivalDateTime > ?)", (currentFlightID, self.plannedArrival, self.plannedDeparture, currentFlightID, self.plannedArrival, self.plannedDeparture))
+      firstOfficerToExclude = self.firstOfficer if self.firstOfficer is not None else -1
+      db.cur.execute(DBOperations.sql_available_pilots, (firstOfficerToExclude, currentFlightID, self.plannedArrival, self.plannedDeparture, currentFlightID, self.plannedArrival, self.plannedDeparture))
       pilots = db.cur.fetchall()
       for i, pilot in enumerate(pilots, start = 1):
         print(f"{i}. {pilot[1]}")
@@ -863,11 +840,12 @@ class Flight:
 
 
 
-# Function to Select The First Officer - this could escalate to pilot location and rules to ensure adaquet rest is given preventing the pilot from being assigned to a flight
+# Function to Select The First Officer 
   def setFirstOfficer(self,db):  
     while True:
       currentFlightID = self.flightID if self.flightID is not None else -1
-      db.cur.execute("SELECT PilotID, Name, DoB FROM Pilot WHERE PilotID != ? AND PilotID NOT IN (SELECT Captain FROM Flight WHERE FlightID != ? AND Captain IS NOT NULL AND PlannedDepartureDateTime < ? AND PlannedArrivalDateTime > ? UNION SELECT FirstOfficer FROM Flight WHERE FlightID != ? AND FirstOfficer IS NOT NULL AND PlannedDepartureDateTime < ? AND PlannedArrivalDateTime > ?)", (self.captain, currentFlightID, self.plannedArrival, self.plannedDeparture, currentFlightID, self.plannedArrival, self.plannedDeparture))
+      captainToExclude = self.captain if self.captain is not None else -1
+      db.cur.execute(DBOperations.sql_available_pilots, (captainToExclude, currentFlightID, self.plannedArrival, self.plannedDeparture, currentFlightID, self.plannedArrival, self.plannedDeparture))
       pilots = db.cur.fetchall()
       for i, pilot in enumerate(pilots, start = 1):
         print(f"{i}. {pilot[1]}")
@@ -925,11 +903,8 @@ class Flight:
 
 
 
-# The main function will parse arguments.
-# These argument will be defined by the users on the console.
-# The user will select a choice from the menu to interact with the database.
+# Main Function where the main menu is managed
 db_ops = DBOperations()
-
 
 while True:
   print("\n Menu:")
