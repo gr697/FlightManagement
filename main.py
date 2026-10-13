@@ -131,8 +131,14 @@ class DBOperations:
       params = []
       sql = "SELECT * FROM Flight WHERE TRUE"
       valid = True
+      self.cur.execute("SELECT AirportID, AirportName FROM Airport")
+      airports = self.cur.fetchall()
+
+      print("\nAirports:")
+      for airport in airports:
+        print(f"{airport[0]}. {airport[1]}")
       print("\nSearch By:\n")
-      destination = input("Destination (B to return): ").upper()
+      destination = input("Destination Airport ID (B to return): ").upper()
       if destination == "B":
           return
       status = input("1.Status: \n")
@@ -706,7 +712,7 @@ class Flight:
 
 
 
-# Function to select Departure Date Time
+# Function to select Departure Date Time - A flight cannot be scheduled in the past
   def setDepartureDateTime(self,db):
     while True:
 
@@ -720,6 +726,9 @@ class Flight:
         return "cancel"
       try:
         self.plannedDeparture = datetime.datetime.strptime(flightDate, "%d/%m/%Y %H:%M")
+        if self.plannedDeparture < datetime.datetime.now():
+          print("Departure time cannot be in the past.")
+          continue
         self.setArrivalDateTime(db)
         return
       except ValueError:
@@ -800,7 +809,7 @@ class Flight:
         return "back"
       print("\nB - Back")
       print("C - Cancel\n")
-      choice = input("Enter the plane you would like to Flight: ").upper()
+      choice = input("Enter the plane you would like to take the Flight: ").upper()
   
       if choice == "B":
         return "back"
@@ -923,7 +932,7 @@ while True:
   print(" 1. Add a New Flight")
   print(" 2. View Flights by Criteria")
   print(" 3. Update Flight Information")
-  print(" 4. Assign/Remove Pilot on Flightd Flight")
+  print(" 4. Assign/Remove Pilot on Flight")
   print(" 5. View Pilot Flight")
   print(" 6. View/Update Destination Information")
   print(" 7. Delete Flight")
