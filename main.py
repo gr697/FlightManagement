@@ -221,9 +221,17 @@ class DBOperations:
 #Edit menu for a planned flight
   def PlannedFlightMenu(self, flight):
     while True:
+          self.cur.execute("SELECT AirportName FROM Airport WHERE AirportID = ?", (flight.originAirport,))
+          origin = self.cur.fetchone()
+
+          self.cur.execute("SELECT AirportName FROM Airport WHERE AirportID = ?", (flight.destinationAirport,))
+          destination = self.cur.fetchone()
+
+          originName = origin[0] if origin else flight.originAirport
+          destinationName = destination[0] if destination else flight.destinationAirport
           try:
-            print(f"1. Edit Origin: {flight.originAirport}")
-            print(f"2. Edit Destination: {flight.destinationAirport}")
+            print(f"1. Edit Origin: {originName}")
+            print(f"2. Edit Destination: {destinationName}")
             print(f"3. Edit Departure Date Time: {flight.plannedDeparture}")
             print(f"4. Edit Plane: {flight.planeId}")
             print(f"5. Edit Captain: {flight.captain}")
@@ -275,7 +283,7 @@ class DBOperations:
             print(e)
 
 
-#Edit menu for a boarding flight
+#Edit menu for a boarding flight - Only actual departure time can be edited here. Possible overide could be developed at a later date, discussion with client required
   def BoardingFlightMenu(self,flight):
       while True:
             try:
@@ -303,7 +311,7 @@ class DBOperations:
               print(e)
 
 
-#Edit Menu for a departed flight
+#Edit Menu for a departed flight - Only Arrival time can be edited here as its in the air
   def DepartedFlightMenu(self,flight):
       while True:
             try:
@@ -331,7 +339,7 @@ class DBOperations:
               print(e)
 
 
-#Edit menu for a landed flight
+#Edit menu for a landed flight - Setting the Flight to complete allows the plane to be rescheduled.
   def LandedFlightMenu(self,flight):
       while True:
             try:
@@ -497,10 +505,13 @@ class DBOperations:
       print("Only flights with a 'Planned' status can be edited.")
       return
     while True:
+      self.cur.execute("SELECT AirportName FROM Airport WHERE AirportID = ?", (flight.destinationAirport,))
+      destination = self.cur.fetchone()
+      destinationName = destination[0] if destination else flight.destinationAirport
       try:
         self.displayFlightObject(flight)
         print("-" * 50)
-        print(f"1. Destination Airport: {flight.destinationAirport}")
+        print(f"1. Destination Airport: {destinationName}")
         print("2. Save Changes and Return to Main Menu")
         print("-" * 50)
         choice = input("Select a field to edit (or B to return): ")
@@ -878,11 +889,11 @@ class Flight:
 #Function for displaying the selected items and offer the user to submit or cancel or continue to edit the record.
   def confirmBooking(self,db):
     while True:
-      print(f"Oringin:{self.originAirport}\nDestination:{self.destinationAirport}\nDeparture:{self.plannedDeparture}\nPlane:{self.planeId}\n")
+      db.displayFlightObject(self)
       print("\nB - Back")
       print("C - Cancel\n")
       print("S - Save\n")
-      choice = input("Do you want to store the new Flightd item? ").upper()
+      choice = input("Do you want to store the new Flight? ").upper()
   
       if choice == "B":
         return "back"
@@ -912,7 +923,7 @@ while True:
   print(" 1. Add a New Flight")
   print(" 2. View Flights by Criteria")
   print(" 3. Update Flight Information")
-  print(" 4. Delete/Assign Pilot on Flightd Flight")
+  print(" 4. Assign/Remove Pilot on Flightd Flight")
   print(" 5. View Pilot Flight")
   print(" 6. View/Update Destination Information")
   print(" 7. Delete Flight")
