@@ -1,11 +1,13 @@
 # FlightManagement
 Assignment 1 Databases and cloud
 Flight Management System
+
+------------------------------------------------------------------------------------------
 Overview
 
 The Flight Management System is a Python console-based application that uses SQLite to manage flight scheduling and operational data. The system allows users to create, update, search and delete flight records while maintaining relationships between aircraft, airports, countries, pilots and journey times.
 
-The application was designed as a minimum viable flight scheduling solution, demonstrating the use of relational database design, SQL queries, object-oriented programming and business rule implementation.
+The application was designed as a minimum viable flight scheduling solution to demonstrate relational database design, SQL query development, object-oriented programming and the implementation of operational business rules.
 
 Features
 Flight Management
@@ -29,20 +31,16 @@ Route Management
 Calculate planned arrival times automatically.
 Retrieve journey durations based on origin and destination airports.
 Prevent origin and destination airports from being identical.
+
+------------------------------------------------------------------------------------------
 Workflow Management
 
-Flights pass through the following statuses:
+Flights pass through the following workflow statuses:
 
 Plain Text
-Planned
-↓
-Boarding
-↓
-Departed
-↓
-Landed
-↓
-Complete
+Planned → Boarding → Departed → Landed → Complete
+
+-------------------------------------------------------------------------------------------
 
 Different editing permissions are available depending on the flight status.
 
@@ -52,47 +50,22 @@ The database consists of the following entities:
 
 Country
 
-Stores country information and continent data.
-
 Airport
-
-Stores airport information and links airports to countries.
 
 PlaneType
 
-Stores aircraft type information and maximum passenger capacities.
-
 Plane
-
-Stores aircraft records and current airport locations.
 
 Pilot
 
-Stores pilot information.
-
 JourneyTime
-
-Stores route durations between airports using a composite primary key consisting of:
-
-Plain Text
-OriginID
-DestinationID
  
 Flight
 
-Stores all flight information and acts as the central entity connecting:
+------------------------------------------------------------------------------------------
 
-Plane
-Airport
-Pilot
-JourneyTime
-Technologies Used
-Python 3
-SQLite3
-Object-Oriented Programming
-Relational Database Design
-SQL
 Key Business Rules
+
 Aircraft Availability
 
 Aircraft can only be assigned when:
@@ -127,6 +100,8 @@ Running the Application
 
 Ensure Python 3 is installed.
 
+------------------------------------------------------------------------------------------
+
 Save the source code as:
 
 Plain Text
@@ -137,7 +112,7 @@ python main.py
 The SQLite database will automatically be created:
 Plain Text
 FlightManagement.db
-
+------------------------------------------------------------------------------------------
 Sample data for:
 
 Countries
@@ -150,6 +125,8 @@ Journey Times
 
 will be automatically loaded on first execution.
 
+------------------------------------------------------------------------------------------
+
 Main Menu
 Plain Text
 1. Add a New Flight
@@ -160,20 +137,3 @@ Plain Text
 6. View/Update Destination Information
 7. Delete Flight
 8. Exit
-Learning Outcomes
-
-This project demonstrates:
-
-Relational database design and normalization.
-Primary and foreign key relationships.
-Composite key implementation.
-SQL CRUD operations.
-SQL joins and subqueries.
-Object-oriented application design.
-Business rule implementation.
-Database-driven application development.
-
-Author
-Gareth Roberts
- MSc Computer Science Coursework Submission
- Flight Management System Project
