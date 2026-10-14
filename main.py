@@ -616,8 +616,7 @@ class DBOperations:
     for destination, count in results:
         print(f"{destination}: {count}")
 
- # Function to return the total number of flights assigned to each pilot
-
+ # Function to return the total number of flights assigned for each pilot as captain or first officer
   def getFlightsPerPilot(self):
     self.cur.execute(self.sql_flights_per_pilot)
     results = self.cur.fetchall()
