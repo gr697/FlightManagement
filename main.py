@@ -20,6 +20,10 @@ class DBOperations:
   sql_journey_time = '''SELECT TotalTravelTimeMins FROM JourneyTime WHERE OriginID = ? AND DestinationID = ?'''
   sql_available_pilots = "SELECT PilotID, Name, DoB FROM Pilot WHERE PilotID != ? AND PilotID NOT IN (SELECT Captain FROM Flight WHERE FlightID != ? AND Captain IS NOT NULL AND PlannedDepartureDateTime < ? AND PlannedArrivalDateTime > ? UNION SELECT FirstOfficer FROM Flight WHERE FlightID != ? AND FirstOfficer IS NOT NULL AND PlannedDepartureDateTime < ? AND PlannedArrivalDateTime > ?)"
   sql_update = '''UPDATE Flight SET PlannedArrivalDateTime = ?, PlannedDepartureDateTime = ?, ActualArrivalDateTime = ?, ActualDepartureDateTime = ?, PlaneID = ?, DestinationAirportID = ?, OriginAirportID = ?, FirstOfficer = ?, Captain = ?, Status = ? WHERE FlightID = ?'''
+  sql_flights_per_destination = "SELECT Airport.AirportName, COUNT(Flight.FlightID) AS NumberOfFlights FROM Flight JOIN Airport ON Flight.DestinationAirportID = Airport.AirportID GROUP BY Airport.AirportName ORDER BY NumberOfFlights DESC"
+  sql_flights_per_pilot = "SELECT Pilot.Name, COUNT(*) AS NumberOfFlights FROM Pilot JOIN (SELECT Captain AS PilotID FROM Flight WHERE Captain IS NOT NULL UNION ALL SELECT FirstOfficer AS PilotID FROM Flight WHERE FirstOfficer IS NOT NULL) AssignedPilots ON Pilot.PilotID = AssignedPilots.PilotID GROUP BY Pilot.Name ORDER BY NumberOfFlights DESC"
+
+
 
 
 #database initialisation where tables are created if 
@@ -372,6 +376,8 @@ class DBOperations:
               print(e)
 
 
+
+
 #CompleteFlight sequence to set status and update the database.
   def completeFlight(self, flight):
     try:
@@ -597,6 +603,30 @@ class DBOperations:
     except Exception as e:
       self.conn.rollback()
       print(e)
+
+  # Function to return the total number of flights assigned to each destination
+
+  def getFlightsPerDestination(self):
+    self.cur.execute(self.sql_flights_per_destination)
+    results = self.cur.fetchall()
+
+    print("\nFlights Per Destination")
+    print("-" * 30)
+
+    for destination, count in results:
+        print(f"{destination}: {count}")
+
+ # Function to return the total number of flights assigned to each pilot
+
+  def getFlightsPerPilot(self):
+    self.cur.execute(self.sql_flights_per_pilot)
+    results = self.cur.fetchall()
+
+    print("\nFlights Per Pilot")
+    print("-" * 30)
+
+    for pilot, count in results:
+        print(f"{pilot}: {count}")
 
 # New class for flight, used to create an editable flight object for users to make changes to prior to committing back to the database
 class Flight:
@@ -937,7 +967,9 @@ while True:
   print(" 5. View Pilot Flight")
   print(" 6. View/Update Destination Information")
   print(" 7. Delete Flight")
-  print(" 8. Exit\n")
+  print(" 8. Flights Per Destination")
+  print(" 9. Flights Per Pilot")
+  print("10. Exit\n")
   try:
    __choose_menu = int(input("Enter your choice: "))
    if __choose_menu == 1:
@@ -955,6 +987,10 @@ while True:
    elif __choose_menu == 7:
     db_ops.deleteFlight()
    elif __choose_menu == 8:
+    db_ops.getFlightsPerDestination()
+   elif __choose_menu == 9:
+    db_ops.getFlightsPerPilot()
+   elif __choose_menu == 10:
     db_ops.conn.close()
     print("Application closed.")
     break
