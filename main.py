@@ -23,7 +23,7 @@ class DBOperations:
 
 
 #database initialisation where tables are created if 
-#they dont exist and populate the tables with test data if the tables are empty
+#they do not exist and populate the tables with test data if the tables are empty
   def __init__(self):
     try:
       self.conn = sqlite3.connect("FlightManagement.db")
@@ -93,7 +93,7 @@ class DBOperations:
     self.cur = self.conn.cursor()
 
 
-# Funtion to manage the creation of new Flight records
+# Function to manage the creation of new Flight records
 
   def addNewFlight(self):
     newFlight = Flight()
@@ -372,7 +372,7 @@ class DBOperations:
               print(e)
 
 
-#CompleteFlight sequence to set staus and update the database.
+#CompleteFlight sequence to set status and update the database.
   def completeFlight(self, flight):
     try:
         flight.setAutoStatus("Complete")
@@ -385,7 +385,7 @@ class DBOperations:
         print(e)
 
 
-#Diplay code for flight details based on the row returned from the flight table
+#Display code for flight details based on the row returned from the flight table
   def displayFlightSummary(self, flight):
        self.cur.execute("SELECT AirportName FROM Airport WHERE AirportID = ?", (flight[7],))
        origin = self.cur.fetchone()
@@ -448,13 +448,13 @@ class DBOperations:
        print("Unable to edit flights that are not Planned Status")
        return
       while True:
+       self.displayFlightObject(flight)
        self.cur.execute("SELECT Name FROM Pilot WHERE PilotID = ?",(flight.captain,))
        capt = self.cur.fetchone()
        captName = capt[0] if capt else "None"
        self.cur.execute("SELECT Name FROM Pilot WHERE PilotID = ?",(flight.firstOfficer,))
        firstOff = self.cur.fetchone()
        firstOffName = firstOff[0] if firstOff else "None"
-       print("\nFlight Details")
        print(f"1. Edit Captain: {flight.captain} {captName}")
        print(f"2. Edit First Officer: {flight.firstOfficer} {firstOffName}")
        print("3.Remove Captain")
@@ -729,7 +729,8 @@ class Flight:
         if self.plannedDeparture < datetime.datetime.now():
           print("Departure time cannot be in the past.")
           continue
-        self.setArrivalDateTime(db)
+        if self.setArrivalDateTime(db) is False:
+          continue
         return
       except ValueError:
         print("Please enter a valid date and time.")
@@ -752,7 +753,7 @@ class Flight:
           return False
         traveltime = result[0]
         self.plannedArrival = self.plannedDeparture + datetime.timedelta(minutes = traveltime)
-
+      return True
 
 
 # Function to set Actual Departure Date Time
